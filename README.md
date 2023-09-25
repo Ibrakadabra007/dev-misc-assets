@@ -1,2 +1,2 @@
 # dev-misc-assets
-support files and assets like:   configs, images, readmes, docs.
+support files for LogicApps and assets like:   configs, images, readmes, docs.
