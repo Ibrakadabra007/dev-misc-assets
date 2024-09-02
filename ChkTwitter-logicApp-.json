@@ -1,0 +1,135 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "When_a_new_tweet_is_posted": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['twitter_2']['connectionId']"
+            }
+          },
+          "method": "get",
+          "path": "/onnewtweet",
+          "queries": {
+            "searchQuery": "from:@ibra4Kadabra"
+          }
+        },
+        "recurrence": {
+          "frequency": "Month",
+          "interval": 2,
+          "timeZone": "Pacific Standard Time"
+        },
+        "splitOn": "@triggerBody()?['value']"
+      }
+    },
+    "actions": {
+      "For_each": {
+        "type": "Foreach",
+        "foreach": "@body('Sentiment_(V3.0)')['documents']",
+        "actions": {
+          "Condition": {
+            "type": "If",
+            "expression": {
+              "and": [
+                {
+                  "lessOrEquals": [
+                    "@items('For_each')['confidenceScores']['positive']",
+                    "@float('0.7')"
+                  ]
+                }
+              ]
+            },
+            "actions": {
+              "Compose": {
+                "type": "Compose",
+                "inputs": "A critical tweet received from :    \nThe Tweet content :  \nThe sentiment-score was :  @{items('For_each')['confidenceScores']['positive']}\n"
+              },
+              "Send_Text_Message_(SMS)": {
+                "type": "ApiConnection",
+                "inputs": {
+                  "host": {
+                    "connection": {
+                      "name": "@parameters('$connections')['twilio']['connectionId']"
+                    }
+                  },
+                  "method": "post",
+                  "body": {
+                    "from": "+14243561580",
+                    "to": "+15035151790",
+                    "body": "-A new X(tweet) found :  @{triggerBody()?['TweetText']}\nFor user @ibra4Kadabra\nSentiment score was:  @{body('Sentiment_(V3.0)')}"
+                  },
+                  "path": "/Messages.json"
+                },
+                "runAfter": {
+                  "Compose": [
+                    "Succeeded"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "actions": {}
+            }
+          }
+        },
+        "runAfter": {
+          "Sentiment_(V3.0)": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Sentiment_(V3.0)": {
+        "type": "ApiConnection",
+        "inputs": {
+          "host": {
+            "connection": {
+              "name": "@parameters('$connections')['cognitiveservicestextanalytics']['connectionId']"
+            }
+          },
+          "method": "post",
+          "body": {
+            "documents": [
+              {
+                "id": null,
+                "text": null
+              }
+            ]
+          },
+          "path": "/text/analytics/v3.0/sentiment"
+        },
+        "runAfter": {}
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "Object",
+        "defaultValue": {}
+      }
+    }
+  },
+  "parameters": {
+    "$connections": {
+      "value": {
+        "twitter_2": {
+          "id": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/providers/Microsoft.Web/locations/westus/managedApis/twitter",
+          "connectionId": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/resourceGroups/myAzSandbox01/providers/Microsoft.Web/connections/twitter-5",
+          "connectionName": "twitter-5"
+        },
+        "twilio": {
+          "id": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/providers/Microsoft.Web/locations/westus/managedApis/twilio",
+          "connectionId": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/resourceGroups/myAzSandbox01/providers/Microsoft.Web/connections/twilio",
+          "connectionName": "twilio"
+        },
+        "cognitiveservicestextanalytics": {
+          "id": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/providers/Microsoft.Web/locations/westus/managedApis/cognitiveservicestextanalytics",
+          "connectionId": "/subscriptions/ebcca3d0-48db-45b8-84d5-06490dacf281/resourceGroups/myAzSandbox01/providers/Microsoft.Web/connections/cognitiveservicestextanalytics",
+          "connectionName": "cognitiveservicestextanalytics"
+        }
+      }
+    }
+  }
+}
